@@ -1,11 +1,11 @@
 import { Layout, List, AddEdit } from '@/views/users';
 
 export default {
-    path: '/users',
+    path: '/usuarios',
     component: Layout,
     children: [
         { path: '', component: List },
-        { path: 'add', component: AddEdit },
-        { path: 'edit/:id', component: AddEdit }
+        { path: 'adicionar', component: AddEdit },
+        { path: 'editar/:id', name: 'editUser', component: AddEdit },
     ]
 };

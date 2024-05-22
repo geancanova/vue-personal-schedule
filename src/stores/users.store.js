@@ -3,22 +3,22 @@ import { defineStore } from 'pinia';
 import { fetchWrapper } from '@/helpers';
 import { useAuthStore } from '@/stores';
 
-const baseUrl = `${import.meta.env.VITE_API_URL}/users`;
+const baseUrl = `${import.meta.env.VITE_API_URL}/api/usuario`;
 
 export const useUsersStore = defineStore({
     id: 'users',
     state: () => ({
         users: {},
-        user: {}
+        user: {},
     }),
     actions: {
         async register(user) {
-            await fetchWrapper.post(`${baseUrl}/register`, user);
+            await fetchWrapper.post(`${baseUrl}/salvar`, user);
         },
-        async getAll() {
+        async getAll(term) {
             this.users = { loading: true };
             try {
-                this.users = await fetchWrapper.get(baseUrl);    
+                this.users = await fetchWrapper.post(`${baseUrl}/pesquisar`, { 'termo': term });
             } catch (error) {
                 this.users = { error };
             }
@@ -26,7 +26,8 @@ export const useUsersStore = defineStore({
         async getById(id) {
             this.user = { loading: true };
             try {
-                this.user = await fetchWrapper.get(`${baseUrl}/${id}`);
+                const { object: userObj } = await fetchWrapper.get(`${baseUrl}/buscar/${id}`);
+                this.user = userObj;
             } catch (error) {
                 this.user = { error };
             }
@@ -59,6 +60,6 @@ export const useUsersStore = defineStore({
             if (id === authStore.user.id) {
                 authStore.logout();
             }
-        }
+        },
     }
 });
