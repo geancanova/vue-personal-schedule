@@ -3,7 +3,7 @@ import { Form, Field } from "vee-validate";
 import * as Yup from "yup";
 import { useRoute } from "vue-router";
 import { storeToRefs } from "pinia";
-import { computed, ref, watch } from "vue";
+import { computed, ref, watch, onMounted } from "vue";
 
 import { useAuthStore, useUsersStore, useAlertStore } from "@/stores";
 import { router } from "@/router";
@@ -14,60 +14,47 @@ const usersStore = useUsersStore();
 const alertStore = useAlertStore();
 const route = useRoute();
 
-const id = route.params.id;
-const user = ref(null);
-const isCurrentUser = ref(false);
+const id = ref(route.params.id);
+const { user, loading, error } = storeToRefs(usersStore);
 const loggedInUserId = ref(authStore.user?.id || null);
-const title = ref("Adicionar Usuário");
-
-if (!id) {
-  user.value = null;
-} else {
-  // edit mode
-  getCurrentUser(id);
-}
-
-// Watch for changes in the user store and update the user ref accordingly
-watch(
-  () => usersStore.user,
-  (newValue) => {
-    user.value = newValue;
-  }
+const isCurrentUser = computed(() => loggedInUserId.value === Number(id.value));
+const title = computed(() =>
+  id.value
+    ? isCurrentUser.value
+      ? "Meu Cadastro"
+      : "Editar Usuário"
+    : "Adicionar Usuário"
 );
+
+onMounted(() => {
+  if (id.value) {
+    getCurrentUser(id.value);
+  }
+});
 
 watch(
   () => route.params.id,
   (newVal, oldVal) => {
-    if (route.params.id && newVal !== oldVal) {
+    if (newVal !== oldVal) {
+      id.value = newVal;
       getCurrentUser(newVal);
     }
   }
 );
 
-function getCurrentUser(id) {
-  if (loggedInUserId.value === Number(id)) {
-    isCurrentUser.value = true;
-    title.value = "Meu Cadastro";
-  } else {
-    isCurrentUser.value = false;
-    title.value = "Editar Usuário";
-  }
-  usersStore.getById(id);
+async function getCurrentUser(id) {
+  await usersStore.getById(id);
 }
 
-// Computed property to reflect changes in user
-const initialValues = computed(() => {
-  return {
-    ...user.value?.usuario,
-    password: "",
-    tipos: user.value?.tipos[0],
-  };
-});
+const initialValues = computed(() => ({
+  ...user.value?.usuario,
+  password: "",
+  tipos: user.value?.tipos?.[0] || "", // Default to an empty string if tipos is undefined or empty
+}));
 
-// const phoneRegex = /^\([1-9]{2}\) (?:[2-8]|9[1-9])\d{5}-\d{4}$/;
 const phoneRegex = /^\(\d{2}\) (?:[2-9]\d{3}-\d{4}|9\d{4}-\d{4})$/;
 
-const schema = Yup.object().shape({
+const baseSchema = Yup.object().shape({
   nome: Yup.string().required("O nome é obrigatório"),
   email: Yup.string()
     .required("O e-mail é obrigatório")
@@ -85,14 +72,23 @@ const schema = Yup.object().shape({
   tipos: Yup.string().required("O tipo de usuário é obrigatório"),
   password: Yup.string()
     .transform((x) => (x === "" ? undefined : x))
-    // password optional in edit mode
-    .concat(user ? null : Yup.string().required("A senha é obrigatória"))
     .min(8, "A senha deve ter pelo menos 8 caracteres"),
 });
 
+const schema = computed(() =>
+  baseSchema.shape({
+    password: Yup.string()
+      .transform((x) => (x === "" ? undefined : x))
+      .when("$isEditMode", {
+        is: true,
+        then: Yup.string().notRequired(),
+        otherwise: Yup.string().required("A senha é obrigatória"),
+      }),
+  })
+);
+
 async function onSubmit(values) {
   try {
-    let message;
     const userInfo = {
       usuario: {
         ...values,
@@ -100,11 +96,8 @@ async function onSubmit(values) {
       },
       tipos: [values.tipos],
     };
-    console.log(userInfo);
-
     await usersStore.register(userInfo);
-
-    message = user ? "Usuário atualizado" : "Usuário adicionado";
+    const message = user.value ? "Usuário atualizado" : "Usuário adicionado";
     await router.push("/usuarios");
     alertStore.success(message);
   } catch (error) {
@@ -116,13 +109,14 @@ async function onSubmit(values) {
 <template>
   <h1>{{ title }}</h1>
   <hr class="mb-5" />
-  <template v-if="!(user?.loading || user?.error)">
+  <template v-if="!(loading || error)">
     <Form
       class="col-md-6 offset-md-3"
       @submit="onSubmit"
       :validation-schema="schema"
       :initial-values="initialValues"
       v-slot="{ errors, isSubmitting }"
+      :context="{ isEditMode: !!id }"
     >
       <div class="form-group">
         <label>Nome</label>
@@ -189,7 +183,7 @@ async function onSubmit(values) {
       <div class="form-group">
         <label>
           Senha
-          <em v-if="user">(Deixe vazio para manter a mesma senha)</em>
+          <em v-if="id">(Deixe vazio para manter a mesma senha)</em>
         </label>
         <Field
           name="password"
@@ -229,15 +223,15 @@ async function onSubmit(values) {
       </div>
     </Form>
   </template>
-  <template v-if="user?.loading">
+  <template v-if="loading">
     <div class="text-center m-5">
       <span class="spinner-border spinner-border-lg align-center"></span>
     </div>
   </template>
-  <template v-if="user?.error">
+  <template v-if="error">
     <div class="text-center m-5">
       <div class="text-danger">
-        Erro ao carregar dados do usuário: {{ user.error }}
+        Erro ao carregar dados do usuário: {{ error }}
       </div>
     </div>
   </template>

@@ -44,7 +44,7 @@ search();
               </button>
             </div>
           </form>
-          <a href="#" @click.prevent="search('')">Limpar busca</a>
+          <a href="#" @click.prevent="search()">Limpar busca</a>
         </div>
         <router-link
           to="/usuarios/adicionar"
