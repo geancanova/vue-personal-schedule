@@ -32,19 +32,27 @@ export const useUsersStore = defineStore({
                 this.user = { error };
             }
         },
-        async update(id, params) {
-            await fetchWrapper.put(`${baseUrl}/${id}`, params);
-
+        async update(userParams, userType) {
             // update stored user if the logged in user updated their own record
             const authStore = useAuthStore();
-            if (id === authStore.user.id) {
-                // update local storage
-                const user = { ...authStore.user, ...params };
-                localStorage.setItem('user', JSON.stringify(user));
 
-                // update auth user in pinia state
-                authStore.user = user;
-            }
+            await fetchWrapper.put(`${baseUrl}/atualizar`, userParams);
+
+            const user = {
+                ...authStore.user,
+                username: userParams.username,
+                id: userParams.id,
+                tipos: userType
+            };
+
+            // update local storage
+            localStorage.setItem('user', JSON.stringify(user));
+
+            // update auth user in pinia state
+            authStore.user = user;
+
+            console.log('Local Storage:', localStorage.getItem('user'));
+            console.log('Auth Store User:', authStore.user);
         },
         async delete(id) {
             // add isDeleting prop to user being deleted

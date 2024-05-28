@@ -14,8 +14,8 @@ const usersStore = useUsersStore();
 const alertStore = useAlertStore();
 const route = useRoute();
 
-const id = ref(route.params.id);
 const { user, loading, error } = storeToRefs(usersStore);
+const id = ref(route.params.id);
 const loggedInUserId = ref(authStore.user?.id || null);
 const isCurrentUser = computed(() => loggedInUserId.value === Number(id.value));
 const title = computed(() =>
@@ -29,13 +29,15 @@ const title = computed(() =>
 onMounted(() => {
   if (id.value) {
     getCurrentUser(id.value);
+  } else {
+    user.value = {};
   }
 });
 
 watch(
   () => route.params.id,
   (newVal, oldVal) => {
-    if (newVal !== oldVal) {
+    if (route.params.id && newVal !== oldVal) {
       id.value = newVal;
       getCurrentUser(newVal);
     }
@@ -54,7 +56,7 @@ const initialValues = computed(() => ({
 
 const phoneRegex = /^\(\d{2}\) (?:[2-9]\d{3}-\d{4}|9\d{4}-\d{4})$/;
 
-const baseSchema = Yup.object().shape({
+const schema = Yup.object().shape({
   nome: Yup.string().required("O nome é obrigatório"),
   email: Yup.string()
     .required("O e-mail é obrigatório")
@@ -71,32 +73,43 @@ const baseSchema = Yup.object().shape({
   username: Yup.string().required("O nome de usuário é obrigatório"),
   tipos: Yup.string().required("O tipo de usuário é obrigatório"),
   password: Yup.string()
-    .transform((x) => (x === "" ? undefined : x))
-    .min(8, "A senha deve ter pelo menos 8 caracteres"),
+    .when([], {
+      is: () => !id.value,
+      then: Yup.string().min(8, "A senha deve ter pelo menos 8 caracteres"),
+      otherwise: Yup.string().notRequired(),
+    })
+    .test(
+      "password",
+      "A senha deve ter pelo menos 8 caracteres",
+      (value) => (value ? value?.length >= 8 : true) // Only validate if password is not empty
+    ),
 });
-
-const schema = computed(() =>
-  baseSchema.shape({
-    password: Yup.string()
-      .transform((x) => (x === "" ? undefined : x))
-      .when("$isEditMode", {
-        is: true,
-        then: Yup.string().notRequired(),
-        otherwise: Yup.string().required("A senha é obrigatória"),
-      }),
-  })
-);
 
 async function onSubmit(values) {
   try {
     const userInfo = {
       usuario: {
-        ...values,
-        password: values.password || undefined,
+        id: user.value?.usuario?.id || null,
+        nome: values.nome,
+        email: values.email,
+        dataNascimento: values.dataNascimento,
+        cpf: values.cpf,
+        telefone: values.telefone,
+        username: values.username,
+        password: values.password
+          ? values.password
+          : user.value?.usuario?.password,
       },
       tipos: [values.tipos],
     };
-    await usersStore.register(userInfo);
+    console.log(userInfo);
+    if (isCurrentUser.value) {
+      console.log("isCurrentUser");
+      console.log(userInfo.usuario);
+      await usersStore.update(userInfo.usuario, userInfo.tipos);
+    } else {
+      await usersStore.register(userInfo);
+    }
     const message = user.value ? "Usuário atualizado" : "Usuário adicionado";
     await router.push("/usuarios");
     alertStore.success(message);
@@ -116,7 +129,6 @@ async function onSubmit(values) {
       :validation-schema="schema"
       :initial-values="initialValues"
       v-slot="{ errors, isSubmitting }"
-      :context="{ isEditMode: !!id }"
     >
       <div class="form-group">
         <label>Nome</label>
