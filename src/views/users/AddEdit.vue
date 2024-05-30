@@ -14,23 +14,13 @@ const usersStore = useUsersStore();
 const alertStore = useAlertStore();
 const route = useRoute();
 
-const { user, loading, error } = storeToRefs(usersStore);
 const id = ref(route.params.id);
-const loggedInUserId = ref(authStore.user?.id || null);
-const isCurrentUser = computed(() => loggedInUserId.value === Number(id.value));
-const title = computed(() =>
-  id.value
-    ? isCurrentUser.value
-      ? "Meu Cadastro"
-      : "Editar Usuário"
-    : "Adicionar Usuário"
-);
 
 onMounted(() => {
   if (id.value) {
-    getCurrentUser(id.value);
+    usersStore.getById(id.value);
   } else {
-    user.value = {};
+    usersStore.getUser.usuario = {};
   }
 });
 
@@ -39,19 +29,25 @@ watch(
   (newVal, oldVal) => {
     if (route.params.id && newVal !== oldVal) {
       id.value = newVal;
-      getCurrentUser(newVal);
+      usersStore.getById(newVal);
     }
   }
 );
 
-async function getCurrentUser(id) {
-  await usersStore.getById(id);
-}
+const isCurrentUser = computed(() => authStore.getUser.id === Number(id.value));
+
+const title = computed(() =>
+  id.value
+    ? isCurrentUser.value
+      ? "Meu Cadastro"
+      : "Editar Usuário"
+    : "Adicionar Usuário"
+);
 
 const initialValues = computed(() => ({
-  ...user.value?.usuario,
+  ...usersStore.getUser.usuario,
   password: "",
-  tipos: user.value?.tipos?.[0] || "", // Default to an empty string if tipos is undefined or empty
+  tipos: usersStore.getUser.tipos?.[0] || "", // Default to an empty string if tipos is undefined or empty
 }));
 
 const phoneRegex = /^\(\d{2}\) (?:[2-9]\d{3}-\d{4}|9\d{4}-\d{4})$/;
@@ -89,7 +85,7 @@ async function onSubmit(values) {
   try {
     const userInfo = {
       usuario: {
-        id: user.value?.usuario?.id || null,
+        id: usersStore.getUser.usuario?.id || null,
         nome: values.nome,
         email: values.email,
         dataNascimento: values.dataNascimento,
@@ -98,19 +94,16 @@ async function onSubmit(values) {
         username: values.username,
         password: values.password
           ? values.password
-          : user.value?.usuario?.password,
+          : usersStore.getUser.usuario?.password,
       },
       tipos: [values.tipos],
     };
-    console.log(userInfo);
     if (isCurrentUser.value) {
-      console.log("isCurrentUser");
-      console.log(userInfo.usuario);
       await usersStore.update(userInfo.usuario, userInfo.tipos);
     } else {
       await usersStore.register(userInfo);
     }
-    const message = user.value ? "Usuário atualizado" : "Usuário adicionado";
+    const message = usersStore.getUser ? "Usuário atualizado" : "Usuário adicionado";
     await router.push("/usuarios");
     alertStore.success(message);
   } catch (error) {

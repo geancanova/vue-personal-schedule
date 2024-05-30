@@ -1,12 +1,9 @@
 <script setup>
-import { Nav, Alert } from "@/components";
-import { useAuthStore } from "@/stores";
-
-const authStore = useAuthStore();
+  import { Nav, Alert } from "@/components";
 </script>
 
 <template>
-  <div :class="authStore.user && 'bg-light'">
+  <div class="bg-light">
     <Nav />
     <Alert />
     <div class="container-fluid pt-4 pb-4">

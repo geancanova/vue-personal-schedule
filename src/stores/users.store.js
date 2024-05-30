@@ -11,6 +11,17 @@ export const useUsersStore = defineStore({
         users: {},
         user: {},
     }),
+    getters: {
+        getUser: (state) => state.user,
+        getUsers: (state) => state.users,
+        getUsersWithDateFormatted(state) {
+            return state.users.map((user) => ({
+                ...user,
+                dataNascimento: new Date(user.dataNascimento).toLocaleDateString("pt-BR"),
+            }));
+        },
+
+    },
     actions: {
         async register(user) {
             await fetchWrapper.post(`${baseUrl}/salvar`, user);
@@ -69,5 +80,11 @@ export const useUsersStore = defineStore({
                 authStore.logout();
             }
         },
+        async search(term = "") {
+            return await this.getAll(term);
+        },
+        async clearSearch() {
+            return await this.search("");
+        }
     }
 });

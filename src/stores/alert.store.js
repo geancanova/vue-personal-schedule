@@ -5,6 +5,9 @@ export const useAlertStore = defineStore({
     state: () => ({
         alert: null
     }),
+    getters: {
+        getAlert: (state) => state.alert,
+    },
     actions: {
         success(message) {
             this.alert = { message, type: 'alert-success' };

@@ -1,25 +1,16 @@
 <script setup>
-import { storeToRefs } from "pinia";
-import { computed, ref } from "vue";
+import { ref } from "vue";
 import { useUsersStore } from "@/stores";
 
 const usersStore = useUsersStore();
-const { users } = storeToRefs(usersStore);
 const searchTerm = ref("");
 
-const formattedUsers = computed(() => {
-  return usersStore.users.map((user) => ({
-    ...user,
-    dataNascimento: new Date(user.dataNascimento).toLocaleDateString("pt-BR"), // Formatting date
-  }));
-});
+usersStore.search();
 
-function search(term = "") {
-  searchTerm.value = term;
-  usersStore.getAll(term);
+function clearSearch() {
+  this.usersStore.clearSearch();
+  this.searchTerm = "";
 }
-
-search();
 </script>
 
 <template>
@@ -30,7 +21,7 @@ search();
     <div class="col-md-7 offset-md-2 d-md-flex justify-content-end">
       <div class="d-md-flex align-items-start">
         <div class="mb-3 text-right">
-          <form class="input-group" @submit.prevent="search(searchTerm)">
+          <form class="input-group" @submit.prevent="usersStore.search(searchTerm)">
             <input
               id="search-input"
               type="text"
@@ -44,7 +35,7 @@ search();
               </button>
             </div>
           </form>
-          <a href="#" @click.prevent="search()">Limpar busca</a>
+          <a href="#" @click.prevent="clearSearch()">Limpar busca</a>
         </div>
         <router-link
           to="/usuarios/adicionar"
@@ -67,8 +58,8 @@ search();
         </tr>
       </thead>
       <tbody>
-        <template v-if="users.length">
-          <tr v-for="user in formattedUsers" :key="user.id">
+        <template v-if="usersStore.getUsers.length">
+          <tr v-for="user in usersStore.getUsersWithDateFormatted" :key="user.id">
             <td>{{ user.nome }}</td>
             <td>{{ user.dataNascimento }}</td>
             <td>{{ user.cpf }}</td>
@@ -94,19 +85,19 @@ search();
             </td>
           </tr>
         </template>
-        <tr v-if="users.loading">
+        <tr v-if="usersStore.getUsers.loading">
           <td colspan="6" class="text-center">
             <span class="spinner-border spinner-border-lg align-center"></span>
           </td>
         </tr>
-        <tr v-if="users.error">
+        <tr v-if="usersStore.getUsers.error">
           <td colspan="6">
             <div class="text-danger">
-              Erro ao carregar usuários: {{ users.error }}
+              Erro ao carregar usuários: {{ usersStore.getUsers.error }}
             </div>
           </td>
         </tr>
-        <tr v-if="!users.length">
+        <tr v-if="!usersStore.getUsers.length">
           <td colspan="6">
             <div class="text-center pt-2">
               <p>Nenhum usuário encontrado.</p>

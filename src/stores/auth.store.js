@@ -13,6 +13,9 @@ export const useAuthStore = defineStore({
         user: JSON.parse(localStorage.getItem('user')),
         returnUrl: null
     }),
+    getters: {
+        getUser: (state) => state.user,
+    },
     actions: {
         async login(username, password) {
             try {
@@ -22,7 +25,7 @@ export const useAuthStore = defineStore({
                 this.user = user;
 
                 // store user details and jwt in local storage to keep user logged in between page refreshes
-                localStorage.setItem('user', JSON.stringify(user));
+                this.user && localStorage.setItem('user', JSON.stringify(user));
 
                 // redirect to previous url or default to home page
                 router.push(this.returnUrl || '/');
